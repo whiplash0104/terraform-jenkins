@@ -7,7 +7,6 @@ variable "compartment_ocid" {}
 #variable "user_ocid" {}
 #variable "fingerprint" {}
 #variable "private_key_path" {}
-variable "availablity_domain_name" {}
 
 variable "release" {
   description = "Reference Architecture Release (OCI Architecture Center)"
