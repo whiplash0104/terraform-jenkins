@@ -1,0 +1,546 @@
+# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+
+title: "Jenkins in controller-agent mode"
+description: "Host Jenkins on Oracle Cloud Infrastructure to centralize your build automation and scale your deployment as the needs of your software projects grow."
+stackDescription: "Jenkins in controller-agent mode"
+informationalText: "To connect to the Jenkins UI, copy jenkins_http_login_url or jenkins_https_login_url and paste it to your web browser."
+schemaVersion: 1.1.0
+version: "20201028"
+locale: "en"
+
+variableGroups:
+- title: "General Configuration"
+  visible: false
+  variables:
+  - tenancy_ocid
+  - region
+  - release
+  - bastion_user
+
+- title: "Required Configuration"
+  visible: true  
+  variables:
+  - compartment_ocid
+  - jenkins_password
+  - use_bastion_service
+  - show_advanced
+
+- title: Networking Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - vcn_cidr
+  - http_port
+  - jnlp_port
+
+- title: Load Balancer Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - lb_shape
+  - flex_lb_min_shape
+  - flex_lb_max_shape 
+  - lb_http_port
+  - lb_https_port
+  - listener_ca_certificate
+  - listener_private_key
+  - listener_public_certificate
+
+- title: Compute Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - instance_os
+  - linux_os_version
+  - bastion_display_name
+  - bastion_shape
+  - bastion_flex_shape_ocpus
+  - bastion_flex_shape_memory
+  - controller_shape
+  - controller_flex_shape_ocpus
+  - controller_flex_shape_memory
+  - agent_shape
+  - agent_flex_shape_ocpus
+  - agent_flex_shape_memory
+
+- title: Jenkins Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - jenkins_version
+  - agent_count
+  - plugins
+  - label_prefix
+
+
+variables:
+
+  show_advanced:
+    type: boolean
+    title: "Show advanced options?"
+    description: "Shows advanced options."
+    visible: true
+    default: false
+
+  # General Configuration
+  tenancy_ocid:
+    title: "Tenancy ID"
+    description: "The Oracle Cloud Identifier (OCID) for your tenancy"
+    type: string
+    required: true
+    visibile: false
+
+  region:
+    title: "Region"
+    description: "Region where you deploy your Jenkins"
+    type: oci:identity:region:name
+    required: true
+    visibile: true
+
+  compartment_ocid:
+    title: "Compartment OCID"
+    description: "Comparment where you deploy your Jenkins"
+    type: oci:identity:compartment:id
+    required: true
+    visibile: true
+
+  use_bastion_service:
+    type: boolean
+    visibile: true
+    default: true
+    required: false
+    title: "Use OCI Bastion Service"
+    description: "Check the box to use OCI Bastion Service instead of Bastion Host VM."
+
+  jenkins_password:
+    type: password
+    default: ""
+    required: true
+    title: "Jenkins admin user password"
+    description: "Enter password for Jenkins admin user"
+
+  # Optional Configuration
+
+  plugins:
+    type: array
+    items:
+      type: string
+      pattern: "^[a-zA-Z0-9\\-]+$"
+    required: true
+    title: "Jenkins Plugins"
+    default: ["git","ssh-slaves","oracle-cloud-infrastructure-compute"]
+    minItems: 1
+    uniqueItems: true
+    description: "Define Jenkins plugins to be installed (minimum 1 plugin)."
+
+  vcn_cidr:
+    type: string
+    required: false
+    default: "192.168.0.0/16"
+    pattern: "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\/(3[0-2]|[1-2]?[0-9])$"
+    title: "VCN CIDR"
+    description: "A single, contiguous IPv4 CIDR block of your choice for the VCN"
+  
+  label_prefix:
+    title: "Subnets' Label Prefix"
+    description: "The Label Prefix for Jenkins subnets"
+    type: string
+    required: false
+
+  lb_http_port:
+    title: "Load Balancer HTTP Port"
+    description: "Load Balancer HTTP Port"
+    default: 80
+    minimum: 1
+    maximum: 65535
+    multipleOf: 1
+    type: number
+    required: false
+
+  lb_https_port:
+    title: "Load Balancer HTTPS Port"
+    description: "Load Balancer HTTPS Port"
+    default: 443
+    minimum: 1
+    maximum: 65535
+    multipleOf: 1
+    type: number
+    required: false
+
+  lb_shape:
+    type: enum
+    title: "Load Balancer Shape"
+    description: "Load Balancer Shape"
+    default: "flexible"
+    required: false 
+    enum:
+      - "flexible"
+      - "100Mbps"
+      - "10Mbps"
+      - "10Mbps-Micro"
+      - "400Mbps"
+      - "8000Mbps"
+
+  flex_lb_min_shape:
+    type: enum
+    required: false
+    default: "10"
+    title: "LB Flex Min Shape"
+    description: "Choose Minimum Shape for Flex Load Balancer."
+    enum:
+      - "10"
+      - "100"
+      - "1000"
+      - "400"
+      - "8000"
+    visible:
+      and:
+        - eq:
+          - lb_shape 
+          - "flexible"
+
+  flex_lb_max_shape:
+    type: enum
+    required: false
+    default: "100"
+    title: "LB Flex Max Shape"
+    description: "Choose Maximum Shape for Flex Load Balancer."
+    enum:
+      - "10"
+      - "100"
+      - "1000"
+      - "400"
+      - "8000"
+    visible:
+      and:
+        - eq:
+          - lb_shape 
+          - "flexible"
+
+  http_port:
+    title: "HTTP Port"
+    description: "HTTP Port for Jenkins Server"
+    default: 8080
+    minimum: 1
+    maximum: 65535
+    multipleOf: 1
+    type: number
+    required: false
+  
+  jnlp_port:
+    title: "JNLP Port"
+    description: "JNLP Port for Jenkins Server"
+    default: 49187
+    minimum: 1
+    maximum: 65535
+    multipleOf: 1
+    type: number
+    required: false
+
+  jenkins_version:
+    title: "Jenkins version"
+    description: "Jenkins software version"
+    default: "2.277.4"
+    type: enum
+    enum: 
+      - "2.277.4"
+    required: false
+
+  agent_count:
+    title: "Number of Jenkins Agent Servers"
+    description: "Number of Jenkins Agent Servers"
+    default: 2
+    minimum: 2
+    maximum: 1000
+    multipleOf: 1
+    type: number
+    required: false
+
+  instance_os:
+    type: enum
+    required: false
+    visible: false
+    title: "Instance OS"
+    description: "An Operating System that determines the operating system for Jenkins host."
+    default: "Oracle Linux"
+    enum:
+      - "Oracle Linux"
+
+  linux_os_version:
+    type: enum
+    required: false
+    visible: false
+    title: "Instance OS version"
+    description: "An Operating System version that determines the operating system version for Jenkins host."
+    default: "7.8"
+    enum:
+      - "7.8" 
+
+  bastion_display_name:
+    title: "Name of Bastion Server"
+    description: "Name of Bastion Server"
+    default: "JenkinsBastion"
+    type: string
+    required: false
+    visible:
+      not:
+        - use_bastion_service
+
+  bastion_shape:
+    type: oci:core:instanceshape:name
+    title: "Bastion Server Shape"
+    description: "Bastion Server Shape"
+    default: "VM.Standard.A1.Flex"
+    required: false
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    visible:
+      not:
+        - use_bastion_service
+
+  bastion_flex_shape_ocpus:
+    dependsOn:
+      compartmentId: ${bastion_shape}
+    visible:
+      and:
+        - not:
+          - use_bastion_service
+        - or:
+          - eq:
+            - bastion_shape
+            - "VM.Standard.E3.Flex"
+          - eq:
+            - bastion_shape
+            - "VM.Standard.E4.Flex"
+          - eq:
+            - bastion_shape
+            - "VM.Optimized3.Flex" 
+          - eq:
+            - bastion_shape
+            - "VM.Standard.A1.Flex"
+    type: integer
+    default: 1
+    title: Bastion Server Flex Shape OCPUs
+    minimum: 1
+    maximum: 64
+    required: false
+    description: Maximum of 64 OCPUs
+    
+  bastion_flex_shape_memory:
+    dependsOn:
+      compartmentId: ${bastion_shape}
+    visible:
+      and:
+        - not:
+          - use_bastion_service
+        - or:
+          - eq:
+            - bastion_shape
+            - "VM.Standard.E3.Flex"
+          - eq:
+            - bastion_shape
+            - "VM.Standard.E4.Flex"
+          - eq:
+            - bastion_shape
+            - "VM.Optimized3.Flex" 
+          - eq:
+            - bastion_shape
+            - "VM.Standard.A1.Flex"
+    type: integer
+    default: 6
+    title: Bastion Server Flex Shape Memory 
+    minimum: 1
+    maximum: 1024
+    required: false
+    description: Minimum 1GB or 6GB. Maximum of 64GB per OCPU up to 1024GB
+
+  controller_shape:
+    type: oci:core:instanceshape:name
+    title: "Jenkins Controller Server Shape"
+    description: "Jenkins Controller Server Shape"
+    default: "VM.Standard.A1.Flex"
+    required: false
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+
+  controller_flex_shape_ocpus:
+    visible:
+      or:
+        - eq:
+          - controller_shape
+          - "VM.Standard.E3.Flex"
+        - eq:
+          - controller_shape
+          - "VM.Standard.E4.Flex"
+        - eq:
+          - controller_shape
+          - "VM.Optimized3.Flex"
+        - eq:
+          - controller_shape
+          - "VM.Standard.A1.Flex" 
+    type: integer
+    default: 1
+    title: Jenkins Controller Server Flex Shape OCPUs
+    minimum: 1
+    maximum: 64
+    required: false
+    description: Maximum of 64 OCPUs
+
+    
+  controller_flex_shape_memory:
+    visible:
+      or:
+        - eq:
+          - controller_shape
+          - "VM.Standard.E3.Flex"
+        - eq:
+          - controller_shape
+          - "VM.Standard.E4.Flex"
+        - eq:
+          - controller_shape
+          - "VM.Optimized3.Flex" 
+        - eq:
+          - controller_shape
+          - "VM.Standard.A1.Flex" 
+    type: integer
+    default: 6
+    title: Jenkins Controller Server Flex Shape Memory 
+    minimum: 1
+    maximum: 1024
+    required: false
+    description: Minimum 1GB or 6GB. Maximum of 64GB per OCPU up to 1024GB
+
+  agent_shape:
+    type: oci:core:instanceshape:name
+    title: "Jenkins Agent Server Shape"
+    description: "Jenkins Agent Server Shape"
+    default: "VM.Standard.A1.Flex"
+    required: false
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+
+  agent_flex_shape_ocpus:
+    visible:
+      or:
+        - eq:
+          - agent_shape
+          - "VM.Standard.E3.Flex"
+        - eq:
+          - agent_shape
+          - "VM.Standard.E4.Flex"
+        - eq:
+          - agent_shape
+          - "VM.Optimized3.Flex" 
+        - eq:
+          - agent_shape
+          - "VM.Standard.A1.Flex"
+    type: integer
+    default: 1
+    title: Jenkins Agent Server Flex Shape OCPUs
+    minimum: 1
+    maximum: 64
+    required: false
+    description: Maximum of 64 OCPUs
+
+    
+  agent_flex_shape_memory:
+    visible:
+      or:
+        - eq:
+          - agent_shape
+          - "VM.Standard.E3.Flex"
+        - eq:
+          - agent_shape
+          - "VM.Standard.E4.Flex"
+        - eq:
+          - agent_shape
+          - "VM.Optimized3.Flex"
+        - eq:
+          - agent_shape
+          - "VM.Standard.A1.Flex" 
+    type: integer
+    default: 6
+    title: Jenkins Agent Server Flex Shape Memory 
+    minimum: 1
+    maximum: 1024
+    required: false
+    description: Minimum 1GB or 6GB. Maximum of 64GB per OCPU up to 1024GB
+
+
+  bastion_user:
+    type: string
+    title: "Bastion Server OS User"
+    description: "Bastion Server OS User"
+    default: "opc"
+    required: false
+    visible: false
+
+  listener_ca_certificate:
+    type: text
+    title: "Load Balanacer Listener CA Certificate"
+    description: "Load Balanacer Listener CA Certificate"
+    required: false
+     
+  listener_private_key:
+    type: text
+    title: "Load Balanacer Listener Private Key"
+    description: "Load Balanacer Listener Private Key"
+    required: false
+
+  listener_public_certificate:
+    type: text
+    title: "Load Balanacer Listener Public Certificate"
+    description: "Load Balanacer Listener Public Certificate"
+    required: false
+  
+  release:
+    type: string
+    required: false
+    visible: false
+    title: "Reference Architecture Release (OCI Architecture Center)"
+
+outputs:
+
+  bastion_public_ip:
+    title: "Bastion Server Public IP"
+    displayText: "Bastion Server Public IP"
+    type: copyableString
+    visible: true
+
+  jenkins_http_login_url:
+    title: "Jenkins HTTP Login URL"
+    displayText: "Jenkins HTTP Login URL"
+    type: string
+    visible: true
+
+  jenkins_https_login_url:
+    title: "Jenkins HTTPS Login URL"
+    displayText: "Jenkins HTTPS Login URL"
+    type: string
+    visible: true
+    
+  generated_ssh_private_key:
+    title: "Generated SSH Private Key"
+    displayText: "Generated SSH Private Key"
+    type: string
+    visible: true
+  
+  controller_private_ip:
+    title: "Jenkins Controller Private IP"
+    displayText: "Jenkins Controller Private IP"
+    type: copyableString
+    visible: true
+
+  agent_private_ips:
+    title: "Jenkins Agents Private IPs"
+    displayText: "Jenkins Agents Private IPs"
+    type: string
+    visible: true
+
+ 
+
