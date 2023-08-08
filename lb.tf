@@ -62,7 +62,7 @@ resource "oci_load_balancer_backend" "JenkinsLBBe" {
 
 resource "tls_private_key" "JenkinTLS" {
   count     = var.listener_ca_certificate == "" ? 1 : 0
-  algorithm = "RSA"
+  algorithm = "ECDSA"
   rsa_bits  = 4096
 }
 
